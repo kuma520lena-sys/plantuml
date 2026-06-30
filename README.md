@@ -1,4 +1,3 @@
-```plantuml
 @startuml
 skinparam TypeHierarchyBackgroundColor #EDF2F7
 skinparam BackgroundColor #FFFFFF
@@ -283,6 +282,7 @@ class "«Notification Robot»\nPLM Alerts COE" as alertCOE {
 }
 associateOEM -down-> associateOEMToCR : OEM Model Uploaded
 associateOEM -right-> alertCOE : No New OEM Model Necessary
+associateOEMToCR --> alertCOE
 
 class "«Assigned Activity»\nDownload CR Data for review" as downloadCR {
     + thisActivity : WfActivity
@@ -315,6 +315,14 @@ class "«Set State Robot»\nSet State DR" as SetStateDR {
     + targetState : State = REJECTED
     # LifeCycleHelper.service.setLifeCycleState()
 }
+class "«Expression Robot»\nSync CRP State with CR" as syncCRPwithCR2 { 
+    + cr : WTChangeRequest2
+    + targetState : State
+    + linkedCRP : LifeCycleManaged
+    # PersistenceHelper.manager.refresh()
+    # cr.getLifeCycleState()
+    # LifeCycleHelper.service.setLifeCycleState()
+}
 class "«Assigned Activity»\nDesign Review Result" as DRResult {
     + thisActivity : WfActivity
     + process : WfProcess
@@ -332,8 +340,124 @@ class "«Assigned Activity»\nDesign Review Result" as DRResult {
 alertCOE -down-> downloadCR
 alertCOE -right-> scheduleDR
 scheduleDR -up-> SetStateDR
-SetStateDR -right-> syncCRPwithCR
-syncCRPwithCR -down-> DRResult
+SetStateDR -right-> syncCRPwithCR2
+syncCRPwithCR2 -down-> DRResult
+
+package "Not Printable" {
+class "«Assigned Activity»\nAssociate Justification Report" as associateJust {
+    + thisActivity : wt.workflow.engine.WfActivity
+    + process : wt.workflow.engine.WfProcess
+    + pfam : Object
+    + priority : Object
+    + activityName : String
+    + thisChangeObj : wt.change2.WTChangeRequest2
+    -- Methods Used --
+    # thisActivity.getParentProcess() : WfProcess
+    # process.getContext().getValue(String) : Object
+    # thisActivity.getName() : String
+    # thisChangeObj.getName() : String
+    # thisActivity.setName(String) : void
+    # PersistenceHelper.manager.modify(Persistable) : Persistable
+}
+class "«Expression Robot»\nCheck for Justification Report" as checkForJust {
+    + amCoenpiCR : WTChangeRequest2
+    + rf : ReferenceFactory
+    + ref : WTReference
+    + tiCheck : TypeIdentifier
+    + qr : QueryResult
+    + doc : WTDocument
+    + justificationReportFound : boolean
+    + linkedJustificationReport : WTDocument
+    # rf.getReference(Persistable)
+    # ClientTypedUtility.getTypeIdentifier(String)
+    # ConfigurableLinkHelper.service.getOtherSideObjectsFromLink()
+    # qr.hasMoreElements()
+    # qr.nextElement()
+}
+class "«Expression Robot»\nJustification Report not attached" as JRnotAttached {
+    + thisActivity : wt.workflow.engine.WfActivity
+    + process : wt.workflow.engine.WfProcess
+    + pfam : Object
+    + priority : Object
+    + activityName : String
+    + thisChangeObj : wt.change2.WTChangeRequest2
+    # thisActivity.getParentProcess()
+    # process.getContext().getValue()
+    # thisActivity.getName()
+    # thisChangeObj.getName()
+    # thisActivity.setName()
+    # PersistenceHelper.manager.modify()
+}
+class "«Assigned Activity»\nReview Justification Report" as reviewJR { 
+    + thisActivity : wt.workflow.engine.WfActivity
+    + process : wt.workflow.engine.WfProcess
+    + pfam : Object
+    + priority : Object
+    + activityName : String
+    + thisChangeObj : wt.change2.WTChangeRequest2
+    # thisActivity.getParentProcess()
+    # process.getContext().getValue()
+    # thisActivity.getName()
+    # thisChangeObj.getName()
+    # thisActivity.setName()
+    # PersistenceHelper.manager.modify()
+}
+class "«Expression Robot»\nSet Justification Report State Approved" as setJRApproved { 
+    + approvedState : State
+    + justificationDoc : LifeCycleManaged
+    + linkedJustificationReport : Object
+    # State.toState("APPROVED")
+    # LifeCycleHelper.service.setLifeCycleState()
+}
+class "«Notification Robot»\nPLM Alerts ALL" as AlertALL { 
+    + process : WfProcess
+    + creator : WTPrincipal
+    + emailSubject : String
+    + emailBody : String
+    + notificationTemplate : String
+    # self.getProcess()
+    # process.getCreator()
+    # NotificationHelper.manager.sendNotification()
+}
+class "«Set State Robot»\nSet State Rejected" as SetStateRejected { 
+    + primaryBusinessObject : LifecycleManaged
+    + targetState : State = REJECTED
+    # LifeCycleHelper.service.setLifeCycleState()
+}
+class "«Expression Robot»\nSync CRP State with CR" as syncCRPwithCR { 
+    + cr : WTChangeRequest2
+    + targetState : State
+    + linkedCRP : LifeCycleManaged
+    # PersistenceHelper.manager.refresh()
+    # cr.getLifeCycleState()
+    # LifeCycleHelper.service.setLifeCycleState()
+}
+class "«Assigned Activity»\nJustification Report Update" as JRUpdate { 
+    + thisActivity : WfActivity
+    + process : WfProcess
+    + pfam : Object
+    + priority : Object
+    + activityName : String
+    + thisChangeObj : WTChangeRequest2
+    # thisActivity.getParentProcess()
+    # process.getContext().getValue()
+    # thisActivity.getName()
+    # thisChangeObj.getName()
+    # thisActivity.setName()
+    # PersistenceHelper.manager.modify()
+}
+
+associateJust --> checkForJust
+checkForJust -right-> reviewJR #line:green;line.bold;text:green : JR Attached
+checkForJust --> JRnotAttached #line:red;line.bold;text:red : JR Not Attached
+JRnotAttached --> checkForJust #line.bold;text:red : Loop
+reviewJR --> setJRApproved #line:red;line.bold;text:red : Accept
+setJRApproved --> AlertALL 
+AlertALL --> SetStateRejected 
+SetStateRejected --> syncCRPwithCR 
+syncCRPwithCR --> End
+reviewJR -up-> JRUpdate #line:green;line.bold;text:green : Reject
+JRUpdate --> reviewJR #line:red;line.bold;text:red : Not Printable
+}
 
 @endum
-```
