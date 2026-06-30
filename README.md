@@ -284,5 +284,56 @@ class "«Notification Robot»\nPLM Alerts COE" as alertCOE {
 associateOEM -down-> associateOEMToCR : OEM Model Uploaded
 associateOEM -right-> alertCOE : No New OEM Model Necessary
 
+class "«Assigned Activity»\nDownload CR Data for review" as downloadCR {
+    + thisActivity : WfActivity
+    + process : WfProcess
+    + pfam : Object
+    + priority : Object
+    + activityName : String
+    + thisChangeObj : WTChangeRequest2
+    # thisActivity.getParentProcess()
+    # process.getContext().getValue()
+    # thisActivity.getName()
+    # thisChangeObj.getName()
+    # thisActivity.setName()
+    # PersistenceHelper.manager.modify()
+}
+class "«Assigned Activity»\nSchedule Design Review" as scheduleDR {
+    + thisActivity : WfActivity
+    + activityName : String
+    + thisChangeObj : WTChangeRequest2
+    + pboNumber : String
+    + pboName : String
+    # thisActivity.getName()
+    # thisChangeObj.getNumber()
+    # thisChangeObj.getName()
+    # thisActivity.setName()
+    # PersistenceHelper.manager.save()
+}
+class "«Set State Robot»\nSet State DR" as SetStateDR { 
+    + primaryBusinessObject : LifecycleManaged
+    + targetState : State = REJECTED
+    # LifeCycleHelper.service.setLifeCycleState()
+}
+class "«Assigned Activity»\nDesign Review Result" as DRResult {
+    + thisActivity : WfActivity
+    + process : WfProcess
+    + pfam : Object
+    + priority : Object
+    + activityName : String
+    + thisChangeObj : WTChangeRequest2
+    # thisActivity.getParentProcess()
+    # process.getContext().getValue()
+    # thisActivity.getName()
+    # thisChangeObj.getName()
+    # thisActivity.setName()
+    # PersistenceHelper.manager.modify()
+}
+alertCOE -down-> downloadCR
+alertCOE -right-> scheduleDR
+scheduleDR -up-> SetStateDR
+SetStateDR -right-> syncCRPwithCR
+syncCRPwithCR -down-> DRResult
+
 @endum
 ```
